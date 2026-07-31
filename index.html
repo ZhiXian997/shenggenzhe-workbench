@@ -162,6 +162,22 @@
     #sidebar.open{transform:translateX(0);}
     #sidebarMask{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:55;top:56px;}
     #sidebarMask.show{display:block;}
+    /* 底部导航栏 */
+    #bottomNav{display:flex;position:fixed;bottom:0;left:0;right:0;height:56px;z-index:50;
+      background:var(--card-bg);border-top:1px solid var(--divider);
+      justify-content:space-around;align-items:center;padding:0 4px;
+      box-shadow:0 -2px 12px rgba(0,0,0,0.08);}
+    #bottomNav .nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;
+      gap:2px;padding:4px 8px;border-radius:8px;cursor:pointer;transition:all .15s;
+      min-width:56px;text-decoration:none;color:var(--text-sub);}
+    #bottomNav .nav-item.active{color:var(--accent-pink);}
+    #bottomNav .nav-item span{font-size:10px;line-height:1;white-space:nowrap;}
+    #bottomNav .nav-item i{width:20px;height:20px;}
+    .fab{bottom:72px !important;}
+    main{padding-bottom:64px !important;}
+  }
+  @media (min-width:769px){
+    #bottomNav{display:none;}
   }
 </style>
 </head>
@@ -210,6 +226,30 @@
 <div class="fab" id="fab" title="快捷新增">
   <i data-lucide="plus" class="w-7 h-7" style="color:var(--text-main);"></i>
 </div>
+
+<!-- 底部导航栏（移动端） -->
+<nav id="bottomNav">
+  <div class="nav-item active" data-nav="dashboard">
+    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+    <span>仪表盘</span>
+  </div>
+  <div class="nav-item" data-nav="daily">
+    <i data-lucide="sprout" class="w-5 h-5"></i>
+    <span>日常</span>
+  </div>
+  <div class="nav-item" data-nav="learn">
+    <i data-lucide="book-open" class="w-5 h-5"></i>
+    <span>学习</span>
+  </div>
+  <div class="nav-item" data-nav="media">
+    <i data-lucide="smartphone" class="w-5 h-5"></i>
+    <span>运营</span>
+  </div>
+  <div class="nav-item" data-nav="settings">
+    <i data-lucide="settings" class="w-5 h-5"></i>
+    <span>设置</span>
+  </div>
+</nav>
 
 <div id="modalRoot"></div>
 <div id="toast" class="toast"></div>
@@ -595,7 +635,15 @@ views.dashboard_bind=()=>{
   });
 };
 
-function goView(v){currentView=v;if(PARENT_OF[v])openGroups[PARENT_OF[v]]=true;renderNav();render();closeSidebarMobile();}
+function goView(v){currentView=v;if(PARENT_OF[v])openGroups[PARENT_OF[v]]=true;renderNav();render();closeSidebarMobile();renderBottomNav();}
+
+function renderBottomNav(){
+  const items=$$('#bottomNav .nav-item');
+  if(!items.length) return;
+  const parent=PARENT_OF[currentView]||currentView;
+  items.forEach(el=>el.classList.toggle('active',el.dataset.nav===parent));
+  lucide.createIcons();
+}
 
 /* ---------- 今日计划 ---------- */
 views.today=()=>{
@@ -1176,7 +1224,6 @@ function importAllTodayKB(){
   }
   toast(`已收录 ${n} 条新知识点`); render();
 }
-function goView(view){ currentView=view; if(PARENT_OF[view]){ openGroups[PARENT_OF[view]]=true; } render(); }
 
 /* ---------- 经济知识库 ---------- */
 views.econKnowledge=()=>{
@@ -1893,15 +1940,16 @@ function toggleTheme(){
   if(newDark) document.body.classList.add('dark'); else document.body.classList.remove('dark');
   const presetId=localStorage.getItem(DS.prefix+'themePreset')||'original';
   applyTheme(presetId,newDark);
-  // 触发一次视图重新渲染但保留滚动位置
   const scrollY=window.scrollY;
   render();
+  renderBottomNav();
   window.scrollTo(0,scrollY);
 }
 function pickPreset(id){
   const isDark=document.body.classList.contains('dark');
   applyTheme(id,isDark);
   render();
+  renderBottomNav();
   toast(`已切换为「${THEME_PRESETS.find(t=>t.id===id)?.name}」`);
 }
 function customColor(key,val){
@@ -1913,6 +1961,7 @@ function saveCustomTheme(){
 function resetTheme(){
   applyTheme('original',document.body.classList.contains('dark'));
   render();
+  renderBottomNav();
   toast('已恢复默认主题');
 }
 function openCustomColors(){
@@ -1995,9 +2044,20 @@ function init(){
   applyTheme(savedPreset,document.body.classList.contains('dark'));
   renderNav();
   render();
+  renderBottomNav();
   // 事件绑定
   $('#fab').onclick=openQuickAdd;
   $('#settingsBtn').onclick=()=>goView('settings');
+  $$('#bottomNav .nav-item').forEach(el=>{
+    el.onclick=()=>{
+      const navId=el.dataset.nav;
+      if(navId==='settings'){ goView('settings'); return; }
+      const parent=NAV.find(n=>n.id===navId);
+      if(parent&&parent.children&&parent.children.length>0){
+        goView(parent.children[0].id);
+      }else{ goView(navId); }
+    };
+  });
   $('#globalSearch').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch(e.target.value);});
   $('#menuToggle').onclick=()=>{$('#sidebar').classList.toggle('open');$('#sidebarMask').classList.toggle('show');};
   $('#sidebarMask').onclick=()=>{$('#sidebar').classList.remove('open');$('#sidebarMask').classList.remove('show');};
