@@ -1,6 +1,6 @@
-# 生根者工作台 · 定时抓取脚本（Node.js / GitHub Actions）
-# 每天北京时间9:00自动运行，抓取新闻、视频、经济术语
-# 生成 news_data.js 和 econ_kb.js
+// 生根者工作台 · 定时抓取脚本（Node.js / GitHub Actions）
+// 每天北京时间9:00自动运行，抓取新闻、视频、经济术语
+// 生成 news_data.js 和 econ_kb.js
 
 const fs = require('fs');
 const https = require('https');
