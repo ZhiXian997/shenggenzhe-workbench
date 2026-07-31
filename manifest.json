@@ -1,0 +1,26 @@
+{
+  "name": "生根者工作台",
+  "short_name": "工作台",
+  "description": "个人多功能工作台 - 日常管理、学习计划、自媒体运营三位一体",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#8BA4B8",
+  "theme_color": "#8BA4B8",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "icon-512.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "maskable"
+    }
+  ]
+}
