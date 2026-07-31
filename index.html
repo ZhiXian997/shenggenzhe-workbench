@@ -175,9 +175,15 @@
     #bottomNav .nav-item i{width:20px;height:20px;}
     .fab{bottom:72px !important;}
     main{padding-bottom:64px !important;}
+    /* 顶部二级导航（移动端） */
+    #subNav{display:flex;gap:8px;overflow-x:auto;padding:10px 16px 12px;margin:-16px -16px 12px;background:var(--card-bg);border-bottom:1px solid var(--divider);scrollbar-width:none;-ms-overflow-style:none;position:sticky;top:0;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,0.04);}
+    #subNav::-webkit-scrollbar{display:none;}
+    #subNav .sub-item{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:7px 14px;border-radius:999px;background:var(--accent-yellow);border:1px solid var(--divider);color:var(--text-main);font-size:13px;white-space:nowrap;cursor:pointer;transition:all .15s;}
+    #subNav .sub-item.active{background:var(--accent-pink);color:var(--text-main);border-color:var(--accent-pink);font-weight:600;}
   }
   @media (min-width:769px){
     #bottomNav{display:none;}
+    #subNav{display:none !important;}
   }
 </style>
 </head>
@@ -218,6 +224,7 @@
 
   <!-- 主内容区 -->
   <main class="flex-1 overflow-y-auto p-4 md:p-6">
+    <div id="subNav"></div>
     <div id="viewRoot"></div>
   </main>
 </div>
@@ -395,6 +402,27 @@ const NAV=[
 
 const PARENT_OF={today:'daily',records:'daily',reflection:'daily',ai:'learn',economy:'learn',econKnowledge:'learn',ecoNews:'learn',english:'learn',hotspot:'media',inspiration:'media',schedule:'media',databoard:'media'};
 
+const SUB_NAV={
+  learn:[
+    {id:'ai',label:'AI学习',icon:'brain'},
+    {id:'economy',label:'经济学习',icon:'trending-up'},
+    {id:'econKnowledge',label:'经济知识库',icon:'book-marked'},
+    {id:'ecoNews',label:'经济热点库',icon:'newspaper'},
+    {id:'english',label:'英语学习',icon:'languages'}
+  ],
+  daily:[
+    {id:'today',label:'今日计划',icon:'calendar-check'},
+    {id:'records',label:'打卡记录',icon:'check-circle'},
+    {id:'reflection',label:'每日感悟',icon:'pen-line'}
+  ],
+  media:[
+    {id:'hotspot',label:'热点库',icon:'flame'},
+    {id:'inspiration',label:'灵感记录',icon:'lightbulb'},
+    {id:'schedule',label:'内容排期',icon:'calendar-clock'},
+    {id:'databoard',label:'数据看板',icon:'bar-chart-3'}
+  ]
+};
+
 let currentView='dashboard';
 let openGroups={daily:true,learn:true,media:false};
 
@@ -498,7 +526,29 @@ function seedData(){
 }
 
 /* ---------- 主渲染 ---------- */
+function renderSubNav(){
+  const parent=PARENT_OF[currentView]||currentView;
+  const container=$('#subNav');
+  if(!container) return;
+  const items=SUB_NAV[parent];
+  if(!items){
+    container.innerHTML='';
+    container.style.display='none';
+    return;
+  }
+  container.innerHTML=items.map(item=>`
+    <div class="sub-item ${currentView===item.id?'active':''}" data-view="${item.id}">
+      <i data-lucide="${item.icon}" class="w-3.5 h-3.5"></i>
+      <span>${esc(item.label)}</span>
+    </div>
+  `).join('');
+  container.style.display='flex';
+  $$('#subNav .sub-item').forEach(el=>el.onclick=()=>goView(el.dataset.view));
+  lucide.createIcons();
+}
+
 function render(){
+  renderSubNav();
   const root=$('#viewRoot');
   const fn=views[currentView]||views.dashboard;
   root.innerHTML=fn();
@@ -1015,7 +1065,7 @@ views.ecoNews=()=>{
         <button class="btn-primary text-xs px-3 py-1.5" onclick="addEcoNewsManual()">+ 手动添加</button>
       </div>
     </div>
-    ${nd.updatedAt?`<div class="text-xs mb-3" style="color:var(--text-sub);">📅 数据更新时间：${nd.updatedAt}</div>`:`<div class="text-xs mb-3" style="color:#c47b6b;">⚠ 尚未抓取数据，点击"立即抓取"或双击"新闻抓取"文件夹中的"立即抓取.bat"</div>`}
+    ${nd.updatedAt?`<div class="text-xs mb-3" style="color:var(--text-sub);">📅 数据更新时间：${nd.updatedAt}</div>`:`<div class="text-xs mb-3" style="color:#c47b6b;">⚠ 尚未抓取数据，点击"立即抓取"从云端触发更新</div>`}
     <!-- 手动添加的热点 -->
     ${manual.length?`<div class="card p-5 mb-4">
       <h3 class="font-semibold mb-3 flex items-center gap-2"><i data-lucide="bookmark" class="w-4 h-4"></i>我的收藏</h3>
@@ -1081,7 +1131,57 @@ function saveEcoToFav(time){
   toast('已收藏到我的收藏');render();
 }
 function runFetchNow(){
-  toast('请在"新闻抓取"文件夹中双击"立即抓取.bat"运行，完成后刷新页面');
+  const token=localStorage.getItem(DS.prefix+'githubToken');
+  if(!token){
+    openModal(`
+      <h3 class="text-lg font-semibold mb-2">配置 GitHub Token</h3>
+      <p class="text-sm mb-3" style="color:var(--text-sub);">手动抓取会触发 GitHub Actions 云端工作流。Token 仅保存在你的浏览器本地。</p>
+      <input id="ghTokenInput" type="password" placeholder="ghp_xxxxxxxx" class="mb-3" />
+      <div class="text-xs mb-3" style="color:var(--text-sub);">需要 repo 或 public_repo 权限。可在「系统设置」中修改或清除 Token。</div>
+      <div class="flex gap-2 justify-end">
+        <button class="btn-ghost px-4 py-2 text-sm" onclick="closeModal()">取消</button>
+        <button id="saveTokenBtn" class="btn-primary px-4 py-2 text-sm">保存并触发</button>
+      </div>`);
+    $('#saveTokenBtn').onclick=()=>{
+      const val=$('#ghTokenInput').value.trim();
+      if(!val){toast('请输入 Token');return;}
+      localStorage.setItem(DS.prefix+'githubToken',val);
+      closeModal();
+      triggerGitHubFetch(val);
+    };
+    return;
+  }
+  triggerGitHubFetch(token);
+}
+
+function triggerGitHubFetch(token){
+  toast('正在触发云端抓取，请稍候…');
+  fetch('https://api.github.com/repos/ZhiXian997/shenggenzhe-workbench/actions/workflows/daily-fetch.yml/dispatches',{
+    method:'POST',
+    headers:{
+      'Authorization':'Bearer '+token,
+      'Accept':'application/vnd.github+json',
+      'Content-Type':'application/json',
+      'X-GitHub-Api-Version':'2022-11-28'
+    },
+    body:JSON.stringify({ref:'main'})
+  }).then(r=>{
+    if(r.status===204){
+      toast('云端抓取已触发，约 1–2 分钟后完成，请稍后下拉刷新');
+    }else{
+      return r.json().then(j=>{
+        toast('触发失败：'+(j.message||r.statusText));
+      }).catch(()=>toast('触发失败：'+r.statusText));
+    }
+  }).catch(e=>{
+    toast('网络错误：'+e.message);
+  });
+}
+
+function clearGitHubToken(){
+  localStorage.removeItem(DS.prefix+'githubToken');
+  toast('已清除 GitHub Token');
+  render();
 }
 function showTermDetail(term,idx){
   const el=document.getElementById('term_'+idx);
@@ -1902,6 +2002,17 @@ views.settings=()=>{
         <button class="px-4 py-2 text-sm rounded-xl text-white" style="background:#c47b6b;" onclick="resetAll()">重置全部数据</button>
       </div>
       <div class="card p-5 md:col-span-2">
+        <h3 class="font-semibold mb-3 flex items-center gap-2"><i data-lucide="github" class="w-4 h-4"></i>GitHub 自动抓取</h3>
+        <p class="text-sm mb-3" style="color:var(--text-sub);">配置 Token 后，可在「经济热点库」点击「立即抓取」手动触发云端 Actions 工作流，约 1–2 分钟后刷新即可看到新数据。</p>
+        <div class="flex flex-col gap-2">
+          <input id="settingsGhToken" type="password" placeholder="ghp_xxxxxxxx" value="${esc(localStorage.getItem(DS.prefix+'githubToken')||'')}" />
+          <div class="flex gap-2">
+            <button class="btn-primary px-4 py-2 text-sm" onclick="saveSettingsGitHubToken()">保存 Token</button>
+            <button class="btn-ghost px-4 py-2 text-sm" onclick="clearGitHubToken()">清除 Token</button>
+          </div>
+        </div>
+      </div>
+      <div class="card p-5 md:col-span-2">
         <h3 class="font-semibold mb-3">关于</h3>
         <p class="text-sm" style="color:var(--text-sub);">生根者工作台 · 一个用于安放计划、学习、灵感与成长轨迹的容器。<br/>所有数据均保存在你的浏览器本地（localStorage），不会上传任何服务器。</p>
       </div>
@@ -1963,6 +2074,12 @@ function resetTheme(){
   render();
   renderBottomNav();
   toast('已恢复默认主题');
+}
+function saveSettingsGitHubToken(){
+  const val=$('#settingsGhToken').value.trim();
+  if(!val){toast('请输入 Token');return;}
+  localStorage.setItem(DS.prefix+'githubToken',val);
+  toast('GitHub Token 已保存');
 }
 function openCustomColors(){
   const vars=[
